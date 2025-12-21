@@ -1,0 +1,24 @@
+server:
+  port: 8681
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tab-identity_and_tenant-dev
+    username: myuser
+    password: secret
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  config:
+    activate:
+      on-profile: dev
+
+google-firebase:
+  api-base-url: https://identitytoolkit.googleapis.com/v1/accounts
+
+logging:
+  level:
+    root: INFO

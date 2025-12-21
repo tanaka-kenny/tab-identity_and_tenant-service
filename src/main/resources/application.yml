@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: identity_and_tenant_service
+  security:
+    user:
+      name: swaggeruser
+      password: ${SWAGGER_PASSWORD:changeme}
+  profiles:
+    active: dev
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env,metrics,loggers,beans
+  endpoint:
+    health:
+      show-details: always
+server:
+  servlet:
+    context-path: /identity-and-tenant-service
