@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
 import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantRequest;
+import za.co.pacifish.identity_and_tenant_service.enumeration.TenantStatus;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class TenantService {
         Tenant tenant = Tenant.builder()
             .name(request.name())
             .ownerFirebaseUid(ownerFirebaseUid)
+            .status(TenantStatus.ACTIVE)
             .build();
 
         return tenantRepository.save(tenant);
