@@ -28,6 +28,10 @@ public class TenantController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Void> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().build();
+    }
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Tenant>> getUserTenants(Authentication authentication) {
