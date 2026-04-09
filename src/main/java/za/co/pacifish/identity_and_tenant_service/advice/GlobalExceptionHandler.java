@@ -12,7 +12,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Object> handleIllegalStateException(IllegalStateException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
-            HttpStatus.BAD_REQUEST, ex.getMessage());
+            HttpStatus.UNAUTHORIZED, ex.getMessage());
         return ResponseEntity.of(problemDetail).build();
     }
 }
