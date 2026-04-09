@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
@@ -21,8 +22,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.json.JsonMapper;
 import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
+import za.co.pacifish.identity_and_tenant_service.enumeration.Role;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -49,7 +52,9 @@ public class FirebaseIdTokenFilter extends OncePerRequestFilter {
             Optional<FirebaseUserDetailsDto> firebaseUserDetails = extractUserDetailsFromToken(token);
             if (firebaseUserDetails.isPresent()) {
                 UsernamePasswordAuthenticationToken authenticationToken
-                    = new UsernamePasswordAuthenticationToken(firebaseUserDetails.get(), null, null);
+                    = new UsernamePasswordAuthenticationToken(
+                    firebaseUserDetails.get(), null,
+                    List.of(new SimpleGrantedAuthority("ROLE_" + firebaseUserDetails.get().role())));
                 authenticationToken.setDetails(new WebAuthenticationDetails(request));
 
                 SecurityContext newContext = SecurityContextHolder.createEmptyContext();
@@ -69,9 +74,12 @@ public class FirebaseIdTokenFilter extends OncePerRequestFilter {
     private Optional<FirebaseUserDetailsDto> extractUserDetailsFromToken(String token) throws FirebaseAuthException {
         FirebaseToken firebaseToken = firebaseAuth.verifyIdToken(token);
         String userId = String.valueOf(firebaseToken.getClaims().get("user_id"));
+        String tenantId = String.valueOf(firebaseToken.getClaims().get("tenantId"));
+        String role = String.valueOf(firebaseToken.getClaims().get("role"));
         String email = firebaseToken.getEmail();
 
-        FirebaseUserDetailsDto firebaseUserDetails = new FirebaseUserDetailsDto(email, userId);
+        FirebaseUserDetailsDto firebaseUserDetails = new FirebaseUserDetailsDto(
+            email, userId, tenantId, Role.valueOf(role));
         return Optional.of(firebaseUserDetails);
     }
 
