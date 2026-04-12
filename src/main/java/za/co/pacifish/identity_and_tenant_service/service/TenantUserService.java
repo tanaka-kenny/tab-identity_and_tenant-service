@@ -2,11 +2,9 @@ package za.co.pacifish.identity_and_tenant_service.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantUser;
 import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantUserRequest;
-import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
 import za.co.pacifish.identity_and_tenant_service.mapper.TenantUserMapper;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantUserRepository;
@@ -37,8 +35,8 @@ public class TenantUserService {
 
     public List<TenantUser> findAllByTenantId() {
         String tenantId = AuthContextUtils.userDetails().tenantId();
-        log.info("Finding all tenants for tenant: {}", tenantId);
-        return tenantUserRepository.findAllByTenantId(UUID.fromString(tenantId));
+        log.info("Finding all tenant users for tenant: {}", tenantId);
+        return tenantUserRepository.findAllByTenant_Id(UUID.fromString(tenantId));
     }
 
 

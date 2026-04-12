@@ -8,5 +8,5 @@ import java.util.UUID;
 
 public interface TenantUserRepository extends JpaRepository<TenantUser, UUID> {
 
-    List<TenantUser> findAllByTenantId(UUID tenantId);
+    List<TenantUser> findAllByTenant_Id(UUID tenantId);
 }

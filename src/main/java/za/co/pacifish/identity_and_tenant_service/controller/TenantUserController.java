@@ -1,5 +1,6 @@
 package za.co.pacifish.identity_and_tenant_service.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ public class TenantUserController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<TenantUser> createTenantUser(
-        @RequestBody CreateTenantUserRequest request) {
+        @Valid @RequestBody CreateTenantUserRequest request) {
 
         return tenantUserService.createTenantUser(request)
             .map(ResponseEntity::ok)
