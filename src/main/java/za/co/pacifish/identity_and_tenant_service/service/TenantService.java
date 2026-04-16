@@ -1,5 +1,6 @@
 package za.co.pacifish.identity_and_tenant_service.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class TenantService {
     private final TenantRepository tenantRepository;
     private final TenantUserService tenantUserService;
 
+    @Transactional
     public Tenant createTenant(CreateTenantRequest request, String ownerFirebaseUid) {
         log.info("Creating tenant with name: {}", request.name());
         Tenant tenant = Tenant.builder()

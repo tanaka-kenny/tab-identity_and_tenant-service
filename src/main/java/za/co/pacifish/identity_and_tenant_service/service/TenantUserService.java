@@ -33,22 +33,25 @@ public class TenantUserService {
     }
 
     public TenantUser createTenantUser(CreateTenantUserRequest request, Tenant tenant) {
-        TenantUser tenantUser = TenantUserMapper.toEntity(request, tenant);
-        log.info("Creating new tenant user for tenant: {}", tenant.getId());
-        tenantUser = tenantUserRepository.save(tenantUser);
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("tenantId", tenant.getId().toString());
-        claims.put("roles", List.of(request.role().name()));
 
         try {
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("tenantId", tenant.getId().toString());
+            claims.put("roles", List.of(request.role().name()));
+
             firebaseAuth.setCustomUserClaims(request.firebaseUid(), claims);
+
+            TenantUser tenantUser = TenantUserMapper.toEntity(request, tenant);
+            log.info("Creating new tenant user for tenant: {}", tenant.getId());
+            tenantUser = tenantUserRepository.save(tenantUser);
+
+            return tenantUser;
         } catch (FirebaseAuthException ex) {
             log.error("Failed to update Firebase user: {} Auth claims: {}", request.firebaseUid(), ex.getMessage());
             throw new ExternalServiceException("An internal error occurred while trying to create tenant user. Please try again later");
         }
 
-        return tenantUser;
+
     }
 
     public List<TenantUser> findAllByTenantId() {

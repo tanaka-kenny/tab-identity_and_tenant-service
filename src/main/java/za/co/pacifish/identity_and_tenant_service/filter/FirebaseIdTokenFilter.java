@@ -25,7 +25,9 @@ import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
 import za.co.pacifish.identity_and_tenant_service.enumeration.Role;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -49,20 +51,23 @@ public class FirebaseIdTokenFilter extends OncePerRequestFilter {
 
         String token = authorizationHeader.replace("Bearer ", "");
         try {
-            Optional<FirebaseUserDetailsDto> firebaseUserDetails = extractUserDetailsFromToken(token);
-            if (firebaseUserDetails.isPresent()) {
-                UsernamePasswordAuthenticationToken authenticationToken
-                    = new UsernamePasswordAuthenticationToken(
-                    firebaseUserDetails.get(), null,
-                    List.of(new SimpleGrantedAuthority("ROLE_" + firebaseUserDetails.get().role())));
-                authenticationToken.setDetails(new WebAuthenticationDetails(request));
+            FirebaseUserDetailsDto firebaseUserDetails = extractUserDetailsFromToken(token);
 
-                SecurityContext newContext = SecurityContextHolder.createEmptyContext();
-                newContext.setAuthentication(authenticationToken);
-                SecurityContextHolder.setContext(newContext);
-            } else {
-                setAuthErrorDetails(response);
+            List<SimpleGrantedAuthority> simpleGrantedAuthorities = new ArrayList<>();
+            if (!firebaseUserDetails.roles().isEmpty()) {
+                simpleGrantedAuthorities = firebaseUserDetails.roles().stream()
+                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                    .toList();
             }
+
+            UsernamePasswordAuthenticationToken authenticationToken
+                = new UsernamePasswordAuthenticationToken(firebaseUserDetails, null, simpleGrantedAuthorities);
+            authenticationToken.setDetails(new WebAuthenticationDetails(request));
+
+            SecurityContext newContext = SecurityContextHolder.createEmptyContext();
+            newContext.setAuthentication(authenticationToken);
+            SecurityContextHolder.setContext(newContext);
+
         } catch (FirebaseAuthException _) {
             setAuthErrorDetails(response);
         } finally {
@@ -71,16 +76,21 @@ public class FirebaseIdTokenFilter extends OncePerRequestFilter {
 
     }
 
-    private Optional<FirebaseUserDetailsDto> extractUserDetailsFromToken(String token) throws FirebaseAuthException {
+    private FirebaseUserDetailsDto extractUserDetailsFromToken(String token)
+        throws FirebaseAuthException, ClassCastException, NullPointerException {
         FirebaseToken firebaseToken = firebaseAuth.verifyIdToken(token);
         String userId = String.valueOf(firebaseToken.getClaims().get("user_id"));
         String tenantId = String.valueOf(firebaseToken.getClaims().get("tenantId"));
-        String role = String.valueOf(firebaseToken.getClaims().get("role"));
+        List<Role> roles = ((List<String>) Objects.requireNonNullElse(firebaseToken.getClaims().get("roles"), List.of()))
+            .stream()
+            .map(role -> Role.valueOf(String.valueOf(role)))
+            .toList();
+
         String email = firebaseToken.getEmail();
 
-        FirebaseUserDetailsDto firebaseUserDetails = new FirebaseUserDetailsDto(
-            email, userId, tenantId, Role.valueOf(role));
-        return Optional.of(firebaseUserDetails);
+
+        return new FirebaseUserDetailsDto(
+            email, userId, tenantId, roles);
     }
 
     private void setAuthErrorDetails(HttpServletResponse response) throws IOException {
