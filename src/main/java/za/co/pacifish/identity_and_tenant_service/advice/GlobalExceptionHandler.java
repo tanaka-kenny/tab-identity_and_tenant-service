@@ -5,6 +5,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import za.co.pacifish.identity_and_tenant_service.exception.ExternalServiceException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -20,6 +21,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
             HttpStatus.BAD_REQUEST, ex.getMessage());
+        return ResponseEntity.of(problemDetail).build();
+    }
+
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<Object> handleExternalServiceException(ExternalServiceException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
         return ResponseEntity.of(problemDetail).build();
     }
 }

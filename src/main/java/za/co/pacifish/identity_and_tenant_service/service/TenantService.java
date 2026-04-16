@@ -35,9 +35,9 @@ public class TenantService {
 
         log.info("Creating default tenant user for tenant: {}", tenant.getId());
         FirebaseUserDetailsDto userDetails = AuthContextUtils.userDetails();
-        tenantUserService.createTenantUser(new CreateTenantUserRequest(
-            ownerFirebaseUid, userDetails.email(), userDetails.email(), Role.ADMIN
-        ));
+        tenantUserService.createTenantUser(
+            new CreateTenantUserRequest(
+            ownerFirebaseUid, userDetails.email(), userDetails.email(), Role.ADMIN), tenant);
 
         return tenant;
     }
