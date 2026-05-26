@@ -28,7 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
-		<org.springdoc>2.5.0</org.springdoc>
+		<org.springdoc>2.8.9</org.springdoc>
 		<firebase-sdk.version>9.7.0</firebase-sdk.version>
 	</properties>
 	<dependencies>

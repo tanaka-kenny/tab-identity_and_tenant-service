@@ -3,8 +3,9 @@ services:
     image: 'postgres:latest'
     container_name: tab-identity_and_tenant-dev
     environment:
-      - 'POSTGRES_DB=tab-identity_and_tenant-dev'
+      - 'POSTGRES_DB=identity_and_tenant'
       - 'POSTGRES_PASSWORD=secret'
       - 'POSTGRES_USER=myuser'
     ports:
       - '5432:5432'
+

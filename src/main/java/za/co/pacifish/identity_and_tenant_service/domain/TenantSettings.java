@@ -1,30 +1,42 @@
 package za.co.pacifish.identity_and_tenant_service.domain;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-import java.util.UUID;
+import java.util.Set;
 
-@Entity
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
-public class TenantSettings {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public record TenantSettings(
+    FinancialSettings financialSettings,
+    CustomerSettings customerSettings,
+    PaymentSettings paymentSettings
+) {
 
-    private String configKey;
-    private String configValue;
+    @Builder
+    public record FinancialSettings(
+        String currency,
+        double defaultTipPercent,
+        double taxPercent,
+        boolean pricesIncludeTax
+    ) {
+    }
 
-    @JoinColumn(
-        updatable = false,
-        nullable = false
-    )
-    @ManyToOne
-    private Tenant tenant;
+    @Builder
+    public record CustomerSettings(
+        int waitingTimeWarningMinutes,
+        int waitingTimeCriticalMinutes,
+        boolean allowCloseWithUnpaidTabs,
+        int qrSessionTimeoutHours
+    ) {
+    }
+
+    @Builder
+    public record PaymentSettings(
+        Set<String> enabledMethods
+    ) {
+    }
 }
+
+
+
+
+

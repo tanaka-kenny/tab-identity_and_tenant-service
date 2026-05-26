@@ -8,7 +8,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
 import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
+import za.co.pacifish.identity_and_tenant_service.utils.AuthContextUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,6 +26,9 @@ class TenantServiceTest {
 
     @Mock
     private TenantRepository tenantRepository;
+
+    @Mock
+    private AuthContextUtils authContextUtils;
 
     @InjectMocks
     private TenantService tenantService;
@@ -61,7 +66,9 @@ class TenantServiceTest {
     void createTenant_shouldCallRepositorySaveOnce() {
         CreateTenantRequest request = new CreateTenantRequest("Test Tenant");
         when(tenantRepository.save(any(Tenant.class))).thenReturn(Tenant.builder().build());
-
+        when(authContextUtils.userDetails()).thenReturn(
+            new FirebaseUserDetailsDto("user@tab-test.com", "uid-456", "tab-xx1", List.of())
+        );
         tenantService.createTenant(request, "uid-456");
 
         verify(tenantRepository, times(1)).save(any(Tenant.class));
