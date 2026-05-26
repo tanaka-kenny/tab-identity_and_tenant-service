@@ -6,9 +6,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import za.co.pacifish.identity_and_tenant_service.enumeration.TenantStatus;
 
 import java.time.LocalDateTime;
+
 import java.util.UUID;
 
 @Entity
@@ -32,5 +35,9 @@ public class Tenant {
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "settings", columnDefinition = "jsonb")
+    private TenantSettings settings;
 
 }

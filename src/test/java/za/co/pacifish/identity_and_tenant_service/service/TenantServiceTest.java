@@ -7,7 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
-import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.TenantRequest;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
 
 import java.util.Collections;
@@ -32,7 +32,7 @@ class TenantServiceTest {
     void createTenant_shouldSaveTenantWithCorrectFields() {
         String tenantName = "Acme Corp";
         String ownerUid = "firebase-uid-123";
-        CreateTenantRequest request = new CreateTenantRequest(tenantName);
+        TenantRequest request = new TenantRequest(tenantName);
 
         UUID generatedId = UUID.randomUUID();
         Tenant savedTenant = Tenant.builder()
@@ -59,7 +59,7 @@ class TenantServiceTest {
 
     @Test
     void createTenant_shouldCallRepositorySaveOnce() {
-        CreateTenantRequest request = new CreateTenantRequest("Test Tenant");
+        TenantRequest request = new TenantRequest("Test Tenant");
         when(tenantRepository.save(any(Tenant.class))).thenReturn(Tenant.builder().build());
 
         tenantService.createTenant(request, "uid-456");
