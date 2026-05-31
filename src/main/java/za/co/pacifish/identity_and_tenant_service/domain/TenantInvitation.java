@@ -6,7 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import za.co.pacifish.identity_and_tenant_service.enumeration.Role;
+import za.co.pacifish.identity_and_tenant_service.enumeration.TenantInvitationStatus;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -14,31 +16,26 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(
-    indexes = {
-        @Index(name = "idx_tenant_user_email", columnList = "email")
-    }
-)
-public class TenantUser {
+public class TenantInvitation {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(
-        nullable = false
-    )
-    private String firebaseUid;
-    @Column(nullable = false)
-    private String name;
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false)
-    private Boolean active;
-
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TenantInvitationStatus status;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private LocalDateTime expiration = LocalDateTime.now().plusDays(7);
 
     @JoinColumn(
         nullable = false,

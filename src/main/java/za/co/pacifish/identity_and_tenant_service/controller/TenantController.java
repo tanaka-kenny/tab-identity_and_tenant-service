@@ -7,8 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
-import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantRequest;
-import za.co.pacifish.identity_and_tenant_service.dto.UpdateTenantRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.TenantRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
 import za.co.pacifish.identity_and_tenant_service.service.TenantService;
 
@@ -29,16 +28,9 @@ public class TenantController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Tenant>> getUserTenants(
-        @AuthenticationPrincipal FirebaseUserDetailsDto userDetails) {
-        return ResponseEntity.ok(tenantService.getUserTenants(userDetails.firebaseUid()));
-    }
-
     @PostMapping
     public ResponseEntity<Tenant> createTenant(
-        @Valid @RequestBody CreateTenantRequest request,
+        @Valid @RequestBody TenantRequest request,
         @AuthenticationPrincipal FirebaseUserDetailsDto userDetails) {
         Tenant createdTenant = tenantService.createTenant(request, userDetails.firebaseUid());
         return ResponseEntity.ok(createdTenant);
@@ -48,7 +40,7 @@ public class TenantController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Tenant> updateTenant(
         @PathVariable UUID id,
-        @Valid @RequestBody UpdateTenantRequest request) {
+        @Valid @RequestBody TenantRequest request) {
         return ResponseEntity.ok(tenantService.updateTenant(id, request));
     }
 

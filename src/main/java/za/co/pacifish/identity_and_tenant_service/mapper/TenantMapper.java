@@ -4,8 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantSettings;
-import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantRequest;
-import za.co.pacifish.identity_and_tenant_service.dto.UpdateTenantRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.TenantRequest;
 import za.co.pacifish.identity_and_tenant_service.enumeration.TenantStatus;
 
 import java.util.Set;
@@ -13,16 +12,7 @@ import java.util.Set;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TenantMapper {
 
-    public static Tenant ofDefaultSettings(CreateTenantRequest request, String ownerFirebaseUid) {
-        return Tenant.builder()
-            .name(request.name())
-            .ownerFirebaseUid(ownerFirebaseUid)
-            .status(TenantStatus.ACTIVE)
-            .settings(defaultSettings())
-            .build();
-    }
-
-    public static Tenant ofDefaultSettings(UpdateTenantRequest request, String ownerFirebaseUid) {
+    public static Tenant ofDefaultSettings(TenantRequest request, String ownerFirebaseUid) {
         return Tenant.builder()
             .name(request.name())
             .ownerFirebaseUid(ownerFirebaseUid)

@@ -7,7 +7,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
-import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
 import za.co.pacifish.identity_and_tenant_service.utils.AuthContextUtils;

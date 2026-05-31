@@ -6,16 +6,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantSettings;
-import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantRequest;
-import za.co.pacifish.identity_and_tenant_service.dto.UpdateTenantRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.TenantRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantUserRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
 import za.co.pacifish.identity_and_tenant_service.enumeration.Role;
+import za.co.pacifish.identity_and_tenant_service.enumeration.TenantInvitationStatus;
 import za.co.pacifish.identity_and_tenant_service.mapper.TenantMapper;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
 import za.co.pacifish.identity_and_tenant_service.utils.AuthContextUtils;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,8 +27,15 @@ public class TenantService {
     private final TenantUserService tenantUserService;
 
     @Transactional
-    public Tenant createTenant(CreateTenantRequest request, String ownerFirebaseUid) {
+    public Tenant createTenant(TenantRequest request, String ownerFirebaseUid) {
         log.info("Creating tenant with name: {}", request.name());
+
+        // todo: For now let's allow 1 tenant per user
+        tenantRepository.findByOwnerFirebaseUid(ownerFirebaseUid)
+            .ifPresent(existingTenant -> {
+            throw new IllegalStateException("User with Firebase UID " + ownerFirebaseUid + " already has a tenant with id " + existingTenant.getId());
+        });
+
         Tenant tenant = TenantMapper.ofDefaultSettings(request, ownerFirebaseUid);
 
         tenant = tenantRepository.save(tenant);
@@ -43,7 +49,7 @@ public class TenantService {
         return tenant;
     }
 
-    public Tenant updateTenant(UUID id, UpdateTenantRequest request) {
+    public Tenant updateTenant(UUID id, TenantRequest request) {
         log.info("Updating tenant with id: {}", id);
 
         Tenant tenant = tenantRepository.findById(id).orElseThrow(
@@ -66,8 +72,5 @@ public class TenantService {
         return tenantRepository.findById(UUID.fromString(tenantId));
     }
 
-    public List<Tenant> getUserTenants(String ownerFirebaseUid) {
-        return tenantRepository.findByOwnerFirebaseUid(ownerFirebaseUid);
-    }
 
 }

@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 import za.co.pacifish.identity_and_tenant_service.domain.TenantSettings;
 
-public record UpdateTenantRequest(
+public record TenantRequest(
     @NotBlank(
         message = "Tenant name must not be blank"
     )

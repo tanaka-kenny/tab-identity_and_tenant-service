@@ -19,6 +19,11 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Table(
+    indexes = {
+        @Index(name = "idx_tenant_owner_firebase_uid", columnList = "ownerFirebaseUid")
+    }
+)
 public class Tenant {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
