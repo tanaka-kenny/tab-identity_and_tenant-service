@@ -5,13 +5,16 @@ import com.google.firebase.auth.FirebaseAuthException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantInvitation;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantUser;
 import za.co.pacifish.identity_and_tenant_service.dto.AcceptInvitationRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantUserRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
 import za.co.pacifish.identity_and_tenant_service.dto.InviteUserRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.app_events.InvitationNotificationEvent;
 import za.co.pacifish.identity_and_tenant_service.enumeration.TenantInvitationStatus;
 import za.co.pacifish.identity_and_tenant_service.exception.ExternalServiceException;
 import za.co.pacifish.identity_and_tenant_service.mapper.TenantUserMapper;
@@ -31,10 +34,13 @@ public class TenantUserService {
     private final TenantInvitationRepository invitationRepository;
     private final TenantRepository tenantRepository;
     private final FirebaseAuth firebaseAuth;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     @Transactional
     public TenantInvitation inviteUser(InviteUserRequest request) {
-        String tenantId = AuthContextUtils.userDetails().tenantId();
+        FirebaseUserDetailsDto userDetails = AuthContextUtils.userDetails();
+        var tenantId = userDetails.tenantId();
 
         log.info("Creating invite for tenant {}", tenantId);
         tenantUserRepository.findByEmailAndTenantId(request.email(), UUID.fromString(tenantId))
@@ -54,7 +60,12 @@ public class TenantUserService {
 
         invitation = invitationRepository.save(invitation);
 
-        // todo: call notifications service
+        eventPublisher.publishEvent(new InvitationNotificationEvent(
+            invitation.getEmail(),
+            invitation.getId(),
+            tenant.getName(),
+            userDetails.email()
+        ));
 
         return invitation;
     }

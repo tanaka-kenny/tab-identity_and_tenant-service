@@ -2,7 +2,7 @@ server:
   port: 8681
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/identity_and_tenant
+    url: jdbc:postgresql://localhost:5442/identity_and_tenant
     username: myuser
     password: secret
     driver-class-name: org.postgresql.Driver
@@ -18,7 +18,14 @@ spring:
 
 google-firebase:
   api-base-url: https://identitytoolkit.googleapis.com/v1/accounts
+  service-uid: identity-and-tenant-svc
+
+tab-services:
+  admin-frontend:
+    base-url: http://localhost:4200
+  notifications:
+    base-url: "http://localhost:8381/notifications-service"
 
 logging:
   level:
-    root: INFO
+    root: DEBUG
