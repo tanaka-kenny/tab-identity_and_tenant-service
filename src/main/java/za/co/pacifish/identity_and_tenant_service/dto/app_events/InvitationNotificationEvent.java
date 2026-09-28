@@ -5,6 +5,8 @@ import java.util.UUID;
 public record InvitationNotificationEvent(
     String recipient,
     UUID invitationId,
+    String invitationToken,
     String tenantName,
     String inviterName
-    ) {}
+    ) {
+}

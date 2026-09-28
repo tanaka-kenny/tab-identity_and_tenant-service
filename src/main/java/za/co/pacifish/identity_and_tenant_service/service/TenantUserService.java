@@ -1,7 +1,6 @@
 package za.co.pacifish.identity_and_tenant_service.service;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,47 +11,60 @@ import za.co.pacifish.identity_and_tenant_service.domain.TenantInvitation;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantUser;
 import za.co.pacifish.identity_and_tenant_service.dto.AcceptInvitationRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantUserRequest;
-import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
+import za.co.pacifish.identity_and_tenant_service.dto.AuthUserDetails;
 import za.co.pacifish.identity_and_tenant_service.dto.InviteUserRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.InvitationValidationResponse;
 import za.co.pacifish.identity_and_tenant_service.dto.app_events.InvitationNotificationEvent;
 import za.co.pacifish.identity_and_tenant_service.enumeration.TenantInvitationStatus;
-import za.co.pacifish.identity_and_tenant_service.exception.ExternalServiceException;
 import za.co.pacifish.identity_and_tenant_service.mapper.TenantUserMapper;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantInvitationRepository;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantUserRepository;
 import za.co.pacifish.identity_and_tenant_service.utils.AuthContextUtils;
+import za.co.pacifish.identity_and_tenant_service.utils.TokenUtils;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TenantUserService {
 
+    private static final String INVALID_INVITATION_MESSAGE = "Invitation token is invalid, expired, or already used";
+
     private final TenantUserRepository tenantUserRepository;
     private final TenantInvitationRepository invitationRepository;
     private final TenantRepository tenantRepository;
-    private final FirebaseAuth firebaseAuth;
     private final ApplicationEventPublisher eventPublisher;
 
 
     @Transactional
-    public TenantInvitation inviteUser(InviteUserRequest request) {
-        FirebaseUserDetailsDto userDetails = AuthContextUtils.userDetails();
-        var tenantId = userDetails.tenantId();
+    public TenantInvitation inviteUser(
+        UUID tenantId,
+        InviteUserRequest request) {
+        String normalizedEmail = normalizeEmail(request.email());
+
 
         log.info("Creating invite for tenant {}", tenantId);
-        tenantUserRepository.findByEmailAndTenantId(request.email(), UUID.fromString(tenantId))
-            .ifPresent(_ -> {
-                throw new IllegalStateException("User with email " + request.email() + " already exists in tenant  ");
-            });
+        if (tenantUserRepository.existsByEmailIgnoreCaseAndTenant_Id(normalizedEmail, tenantId)) {
+            throw new IllegalStateException("User with email " + normalizedEmail + " already exists in tenant");
+        }
 
-        Tenant tenant = tenantRepository.findById(UUID.fromString(tenantId)).orElseThrow(
-            () -> new IllegalArgumentException("Tenant with does not exist"));
+        if (invitationRepository.existsByEmailIgnoreCaseAndTenant_IdAndStatus(
+            normalizedEmail, tenantId, TenantInvitationStatus.PENDING)) {
+            throw new IllegalStateException("An active invitation already exists for this email");
+        }
 
+        Tenant tenant = tenantRepository.findById(tenantId).orElseThrow(
+            () -> new IllegalArgumentException("Tenant with id " + tenantId + " does not exist"));
+
+        String invitationToken = TokenUtils.generateToken();
         TenantInvitation invitation = TenantInvitation.builder()
-            .email(request.email())
+            .email(normalizedEmail)
+            .tokenHash(TokenUtils.hashToken(invitationToken))
             .role(request.role())
             .status(TenantInvitationStatus.PENDING)
             .tenant(tenant)
@@ -60,9 +72,11 @@ public class TenantUserService {
 
         invitation = invitationRepository.save(invitation);
 
+        AuthUserDetails userDetails = AuthContextUtils.userDetails();
         eventPublisher.publishEvent(new InvitationNotificationEvent(
             invitation.getEmail(),
             invitation.getId(),
+            invitationToken,
             tenant.getName(),
             userDetails.email()
         ));
@@ -70,22 +84,38 @@ public class TenantUserService {
         return invitation;
     }
 
+    public InvitationValidationResponse validateInvitation(String token) {
+        TenantInvitation invitation = resolvePendingInvitation(token);
+        return new InvitationValidationResponse(
+            invitation.getEmail(),
+            invitation.getRole(),
+            invitation.getTenant().getName(),
+            invitation.getExpiration()
+        );
+    }
+
     @Transactional
     public TenantUser acceptInvite(AcceptInvitationRequest request) {
-        TenantInvitation invitation = invitationRepository.findById(request.invitationId())
-            .orElseThrow(() -> new IllegalArgumentException("Invitation with id " + request.invitationId() + " does not exist"));
+        TenantInvitation invitation = resolvePendingInvitation(request.token());
+        String normalizedEmail = normalizeEmail(request.email());
 
-        if (TenantInvitationStatus.PENDING.equals(invitation.getStatus())) {
-            throw new IllegalStateException("Invitation already processed");
+        if (!invitation.getEmail().equalsIgnoreCase(normalizedEmail)) {
+            throw new IllegalArgumentException("Provided email does not match the invitation");
         }
 
-        log.info("Invitation with id {} has been accepted", request.invitationId());
+        if (tenantUserRepository.existsByEmailIgnoreCaseAndTenant_Id(normalizedEmail, invitation.getTenant().getId())) {
+            throw new IllegalStateException("User with email " + normalizedEmail + " already exists in tenant");
+        }
+
+        log.info("Invitation with id {} has been accepted", invitation.getId());
         CreateTenantUserRequest userRequest = new CreateTenantUserRequest(
-            request.firebaseUid(), invitation.getEmail(), invitation.getEmail(), invitation.getRole());
+            request.userId(), request.name(), normalizedEmail, invitation.getRole());
         TenantUser tenantUser = createTenantUser(
             userRequest, invitation.getTenant());
 
         invitation.setStatus(TenantInvitationStatus.ACCEPTED);
+        invitation.setAcceptedAt(LocalDateTime.now());
+        invitation.setUserId(request.userId());
         invitationRepository.save(invitation);
         log.info("Created user: {} for invitation: {}", tenantUser.getId(), invitation.getId());
         return tenantUser;
@@ -94,30 +124,39 @@ public class TenantUserService {
     public TenantUser createTenantUser(
         CreateTenantUserRequest request, Tenant tenant) {
 
-        try {
-            Map<String, Object> claims = new HashMap<>();
-            claims.put("tenantId", tenant.getId().toString());
-            claims.put("roles", List.of(request.role().name()));
+        TenantUser tenantUser = TenantUserMapper.toEntity(
+            request, tenant);
+        log.info("Creating new tenant user for tenant: {}", tenant.getId());
+        tenantUser = tenantUserRepository.save(tenantUser);
 
-            firebaseAuth.setCustomUserClaims(request.firebaseUid(), claims);
+        return tenantUser;
 
-            TenantUser tenantUser = TenantUserMapper.toEntity(
-                request, tenant);
-            log.info("Creating new tenant user for tenant: {}", tenant.getId());
-            tenantUser = tenantUserRepository.save(tenantUser);
+    }
 
-            return tenantUser;
-        } catch (FirebaseAuthException ex) {
-            log.error("Failed to update Firebase user: {} Auth claims: {}", request.firebaseUid(), ex.getMessage());
-            throw new ExternalServiceException("An internal error occurred while trying to create tenant user. Please try again later");
+    public List<TenantUser> findAllByTenantId(UUID tenantId) {
+        return tenantUserRepository.findAllByTenant_Id(tenantId);
+    }
+
+    private TenantInvitation resolvePendingInvitation(String token) {
+        String hashedToken = TokenUtils.hashToken(token);
+        TenantInvitation invitation = invitationRepository.findByTokenHash(hashedToken)
+            .orElseThrow(() -> new IllegalArgumentException(INVALID_INVITATION_MESSAGE));
+
+        if (TenantInvitationStatus.PENDING != invitation.getStatus()) {
+            throw new IllegalStateException("Invitation already processed");
         }
+
+        if (invitation.isExpired()) {
+            invitation.setStatus(TenantInvitationStatus.EXPIRED);
+            invitationRepository.save(invitation);
+            throw new IllegalArgumentException(INVALID_INVITATION_MESSAGE);
+        }
+
+        return invitation;
     }
 
-    public List<TenantUser> findAllByTenantId() {
-        String tenantId = AuthContextUtils.userDetails().tenantId();
-        log.info("Finding all tenant users for tenant: {}", tenantId);
-        return tenantUserRepository.findAllByTenant_Id(UUID.fromString(tenantId));
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
-
 
 }

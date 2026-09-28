@@ -4,5 +4,7 @@ public enum TenantInvitationStatus {
 
     ACCEPTED,
     PENDING,
+    EXPIRED,
+    REVOKED,
     NOTIFICATION_SEND_FAILED
 }

@@ -24,7 +24,11 @@ import java.util.List;
 public class SecurityConfig {
     private final FirebaseIdTokenFilter firebaseTokenFilter;
 
-    private static final String[] WHITE_LIST_URL = {"/v3/api-docs/**", "/swagger-ui/**"};
+    private static final String[] WHITE_LIST_URL = {
+        "/v3/api-docs/**",
+        "/swagger-ui/**",
+        "/tenantUsers/invitations/**"
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {

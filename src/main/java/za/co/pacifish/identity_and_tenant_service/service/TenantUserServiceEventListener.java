@@ -31,7 +31,7 @@ public class TenantUserServiceEventListener {
         Map<String, Object> variables = Map.of(
             "inviter_name", data.inviterName(),
             "organisation", data.tenantName(),
-            "inviteLink", String.format("%s/profile/invitation?id=%s", adminFrontendBaseUrl, data.invitationId())
+            "inviteLink", String.format("%s/profile/invitation?token=%s", adminFrontendBaseUrl, data.invitationToken())
         );
 
         NotificationRequest request = NotificationRequest.builder()
@@ -54,4 +54,3 @@ public class TenantUserServiceEventListener {
         }
     }
 }
-

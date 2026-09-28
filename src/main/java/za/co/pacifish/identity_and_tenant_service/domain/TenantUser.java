@@ -27,7 +27,7 @@ public class TenantUser {
     @Column(
         nullable = false
     )
-    private String firebaseUid;
+    private String userId;
     @Column(nullable = false)
     private String name;
     @Column(nullable = false)

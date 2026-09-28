@@ -12,10 +12,10 @@ import java.util.Set;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TenantMapper {
 
-    public static Tenant ofDefaultSettings(TenantRequest request, String ownerFirebaseUid) {
+    public static Tenant ofDefaultSettings(TenantRequest request, String userId) {
         return Tenant.builder()
             .name(request.name())
-            .ownerFirebaseUid(ownerFirebaseUid)
+            .userId(userId)
             .status(TenantStatus.ACTIVE)
             .settings(defaultSettings())
             .build();

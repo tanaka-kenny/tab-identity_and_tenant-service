@@ -2,22 +2,19 @@ package za.co.pacifish.identity_and_tenant_service.service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
-import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
+import za.co.pacifish.identity_and_tenant_service.domain.TenantSettings;
+import za.co.pacifish.identity_and_tenant_service.dto.TenantRequest;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
-import za.co.pacifish.identity_and_tenant_service.utils.AuthContextUtils;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,115 +24,104 @@ class TenantServiceTest {
     private TenantRepository tenantRepository;
 
     @Mock
-    private AuthContextUtils authContextUtils;
+    private TenantUserService tenantUserService;
 
     @InjectMocks
     private TenantService tenantService;
 
     @Test
-    void createTenant_shouldSaveTenantWithCorrectFields() {
-        String tenantName = "Acme Corp";
-        String ownerUid = "firebase-uid-123";
-        CreateTenantRequest request = new CreateTenantRequest(tenantName);
+    void createTenant_shouldThrowWhenOwnerAlreadyHasTenant() {
+        String ownerUid = "owner-uid-001";
+        TenantRequest request = new TenantRequest("Acme", true, null);
+        Tenant existingTenant = Tenant.builder().id(UUID.randomUUID()).userId(ownerUid).build();
 
-        UUID generatedId = UUID.randomUUID();
-        Tenant savedTenant = Tenant.builder()
-            .id(generatedId)
-            .name(tenantName)
-            .ownerFirebaseUid(ownerUid)
-            .build();
+        when(tenantRepository.findByUserId(ownerUid)).thenReturn(Optional.of(existingTenant));
 
-        when(tenantRepository.save(any(Tenant.class))).thenReturn(savedTenant);
-
-        Tenant result = tenantService.createTenant(request, ownerUid);
-
-        assertNotNull(result);
-        assertEquals(generatedId, result.getId());
-        assertEquals(tenantName, result.getName());
-        assertEquals(ownerUid, result.getOwnerFirebaseUid());
-
-        ArgumentCaptor<Tenant> captor = ArgumentCaptor.forClass(Tenant.class);
-        verify(tenantRepository).save(captor.capture());
-        Tenant captured = captor.getValue();
-        assertEquals(tenantName, captured.getName());
-        assertEquals(ownerUid, captured.getOwnerFirebaseUid());
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+            tenantService.createTenant(request, ownerUid));
+        assertTrue(ex.getMessage().contains(ownerUid));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+        verifyNoInteractions(tenantUserService);
     }
 
     @Test
-    void createTenant_shouldCallRepositorySaveOnce() {
-        CreateTenantRequest request = new CreateTenantRequest("Test Tenant");
-        when(tenantRepository.save(any(Tenant.class))).thenReturn(Tenant.builder().build());
-        when(authContextUtils.userDetails()).thenReturn(
-            new FirebaseUserDetailsDto("user@tab-test.com", "uid-456", "tab-xx1", List.of())
-        );
-        tenantService.createTenant(request, "uid-456");
+    void updateTenant_shouldUseDefaultSettingsWhenRequested() {
+        UUID tenantId = UUID.randomUUID();
+        Tenant tenant = Tenant.builder().id(tenantId).name("Old Name").build();
+        TenantRequest request = new TenantRequest("New Name", true, null);
 
-        verify(tenantRepository, times(1)).save(any(Tenant.class));
+        when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+        when(tenantRepository.save(tenant)).thenReturn(tenant);
+
+        Tenant result = tenantService.updateTenant(tenantId, request);
+
+        assertEquals("New Name", result.getName());
+        assertNotNull(result.getSettings());
+        assertEquals("ZAR", result.getSettings().financialSettings().currency());
+        assertTrue(result.getSettings().financialSettings().pricesIncludeTax());
+    }
+
+    @Test
+    void updateTenant_shouldApplyProvidedSettingsWhenNotUsingDefault() {
+        UUID tenantId = UUID.randomUUID();
+        Tenant tenant = Tenant.builder().id(tenantId).name("Old Name").build();
+        TenantSettings customSettings = TenantSettings.builder()
+            .financialSettings(TenantSettings.FinancialSettings.builder()
+                .currency("USD")
+                .defaultTipPercent(10.0)
+                .taxPercent(8.0)
+                .pricesIncludeTax(false)
+                .build())
+            .customerSettings(TenantSettings.CustomerSettings.builder()
+                .waitingTimeWarningMinutes(3)
+                .waitingTimeCriticalMinutes(6)
+                .allowCloseWithUnpaidTabs(true)
+                .qrSessionTimeoutHours(12)
+                .build())
+            .paymentSettings(TenantSettings.PaymentSettings.builder()
+                .enabledMethods(Set.of("CARD"))
+                .build())
+            .build();
+        TenantRequest request = new TenantRequest("Updated", false, customSettings);
+
+        when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+        when(tenantRepository.save(tenant)).thenReturn(tenant);
+
+        Tenant result = tenantService.updateTenant(tenantId, request);
+
+        assertEquals("Updated", result.getName());
+        assertEquals("USD", result.getSettings().financialSettings().currency());
+        assertTrue(result.getSettings().paymentSettings().enabledMethods().contains("CARD"));
+    }
+
+    @Test
+    void updateTenant_shouldThrowWhenCustomSettingsMissing() {
+        UUID tenantId = UUID.randomUUID();
+        Tenant tenant = Tenant.builder().id(tenantId).name("Old Name").build();
+        TenantRequest request = new TenantRequest("Updated", false, null);
+
+        when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+
+        NullPointerException ex = assertThrows(NullPointerException.class, () ->
+            tenantService.updateTenant(tenantId, request));
+        assertEquals("Settings cannot be null when useDefaultSettings is false", ex.getMessage());
+        verify(tenantRepository, never()).save(any(Tenant.class));
     }
 
     @Test
     void getTenantById_shouldReturnTenantWhenFound() {
         UUID tenantId = UUID.randomUUID();
-        Tenant tenant = Tenant.builder()
-            .id(tenantId)
-            .name("Found Tenant")
-            .ownerFirebaseUid("uid-789")
-            .build();
-
+        Tenant tenant = Tenant.builder().id(tenantId).name("Tenant A").build();
         when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
 
         Optional<Tenant> result = tenantService.getTenantById(tenantId.toString());
 
         assertTrue(result.isPresent());
         assertEquals(tenantId, result.get().getId());
-        assertEquals("Found Tenant", result.get().getName());
-        verify(tenantRepository).findById(tenantId);
-    }
-
-    @Test
-    void getTenantById_shouldReturnEmptyWhenNotFound() {
-        UUID tenantId = UUID.randomUUID();
-        when(tenantRepository.findById(tenantId)).thenReturn(Optional.empty());
-
-        Optional<Tenant> result = tenantService.getTenantById(tenantId.toString());
-
-        assertTrue(result.isEmpty());
-        verify(tenantRepository).findById(tenantId);
     }
 
     @Test
     void getTenantById_shouldThrowForInvalidUuid() {
-        assertThrows(IllegalArgumentException.class, () ->
-            tenantService.getTenantById("not-a-valid-uuid"));
-    }
-
-    @Test
-    void getUserTenants_shouldReturnTenantsForOwner() {
-        String ownerUid = "owner-uid-001";
-        List<Tenant> tenants = List.of(
-            Tenant.builder().id(UUID.randomUUID()).name("Tenant A").ownerFirebaseUid(ownerUid).build(),
-            Tenant.builder().id(UUID.randomUUID()).name("Tenant B").ownerFirebaseUid(ownerUid).build()
-        );
-
-        when(tenantRepository.findByOwnerFirebaseUid(ownerUid)).thenReturn(tenants);
-
-        List<Tenant> result = tenantService.getUserTenants(ownerUid);
-
-        assertEquals(2, result.size());
-        assertEquals("Tenant A", result.get(0).getName());
-        assertEquals("Tenant B", result.get(1).getName());
-        verify(tenantRepository).findByOwnerFirebaseUid(ownerUid);
-    }
-
-    @Test
-    void getUserTenants_shouldReturnEmptyListWhenNoTenants() {
-        String ownerUid = "owner-uid-002";
-        when(tenantRepository.findByOwnerFirebaseUid(ownerUid)).thenReturn(Collections.emptyList());
-
-        List<Tenant> result = tenantService.getUserTenants(ownerUid);
-
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-        verify(tenantRepository).findByOwnerFirebaseUid(ownerUid);
+        assertThrows(IllegalArgumentException.class, () -> tenantService.getTenantById("invalid-uuid"));
     }
 }

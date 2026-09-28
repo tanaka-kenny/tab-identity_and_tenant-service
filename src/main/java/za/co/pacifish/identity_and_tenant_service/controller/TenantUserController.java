@@ -10,9 +10,11 @@ import za.co.pacifish.identity_and_tenant_service.domain.TenantInvitation;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantUser;
 import za.co.pacifish.identity_and_tenant_service.dto.AcceptInvitationRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.InviteUserRequest;
+import za.co.pacifish.identity_and_tenant_service.dto.InvitationValidationResponse;
 import za.co.pacifish.identity_and_tenant_service.service.TenantUserService;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -23,13 +25,21 @@ public class TenantUserController {
     private final TenantUserService tenantUserService;
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/invite")
+    @PostMapping("/invite/{tenantId}")
     public ResponseEntity<TenantInvitation> inviteUser(
+        @PathVariable UUID tenantId,
         @Valid @RequestBody InviteUserRequest request) {
-        return  ResponseEntity.ok(tenantUserService.inviteUser(request));
+        return  ResponseEntity.ok(tenantUserService.inviteUser(tenantId, request));
     }
 
-    @PostMapping("/accept-invite")
+    @GetMapping("/invitations/validate")
+    public ResponseEntity<InvitationValidationResponse> validateInvitation(
+        @RequestParam String token
+    ) {
+        return ResponseEntity.ok(tenantUserService.validateInvitation(token));
+    }
+
+    @PostMapping("/invitations/accept")
     public ResponseEntity<TenantUser> acceptInvite(
         @Valid @RequestBody AcceptInvitationRequest request
         ) {
@@ -37,9 +47,11 @@ public class TenantUserController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping
-    public ResponseEntity<List<TenantUser>> getAllTenantUsers() {
-        return ResponseEntity.ok(tenantUserService.findAllByTenantId());
+    @GetMapping("/{tenantId}")
+    public ResponseEntity<List<TenantUser>> getAllTenantUsers(
+        @PathVariable UUID tenantId
+    ) {
+        return ResponseEntity.ok(tenantUserService.findAllByTenantId(tenantId));
     }
 
 }

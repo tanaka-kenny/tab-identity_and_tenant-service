@@ -8,9 +8,8 @@ import za.co.pacifish.identity_and_tenant_service.domain.Tenant;
 import za.co.pacifish.identity_and_tenant_service.domain.TenantSettings;
 import za.co.pacifish.identity_and_tenant_service.dto.TenantRequest;
 import za.co.pacifish.identity_and_tenant_service.dto.CreateTenantUserRequest;
-import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
+import za.co.pacifish.identity_and_tenant_service.dto.AuthUserDetails;
 import za.co.pacifish.identity_and_tenant_service.enumeration.Role;
-import za.co.pacifish.identity_and_tenant_service.enumeration.TenantInvitationStatus;
 import za.co.pacifish.identity_and_tenant_service.mapper.TenantMapper;
 import za.co.pacifish.identity_and_tenant_service.repository.TenantRepository;
 import za.co.pacifish.identity_and_tenant_service.utils.AuthContextUtils;
@@ -27,24 +26,23 @@ public class TenantService {
     private final TenantUserService tenantUserService;
 
     @Transactional
-    public Tenant createTenant(TenantRequest request, String ownerFirebaseUid) {
+    public Tenant createTenant(TenantRequest request, String userId) {
         log.info("Creating tenant with name: {}", request.name());
 
-        // todo: For now let's allow 1 tenant per user
-        tenantRepository.findByOwnerFirebaseUid(ownerFirebaseUid)
+        tenantRepository.findByUserId(userId)
             .ifPresent(existingTenant -> {
-            throw new IllegalStateException("User with Firebase UID " + ownerFirebaseUid + " already has a tenant with id " + existingTenant.getId());
+            throw new IllegalStateException("User with User ID " + userId + " already has a tenant with id " + existingTenant.getId());
         });
 
-        Tenant tenant = TenantMapper.ofDefaultSettings(request, ownerFirebaseUid);
+        Tenant tenant = TenantMapper.ofDefaultSettings(request, userId);
 
         tenant = tenantRepository.save(tenant);
 
         log.info("Creating default tenant user for tenant: {}", tenant.getId());
-        FirebaseUserDetailsDto userDetails = AuthContextUtils.userDetails();
+        AuthUserDetails userDetails = AuthContextUtils.userDetails();
         tenantUserService.createTenantUser(
             new CreateTenantUserRequest(
-                ownerFirebaseUid, userDetails.email(), userDetails.email(), Role.ADMIN), tenant);
+                userId, userDetails.email(), userDetails.email(), Role.ADMIN), tenant);
 
         return tenant;
     }

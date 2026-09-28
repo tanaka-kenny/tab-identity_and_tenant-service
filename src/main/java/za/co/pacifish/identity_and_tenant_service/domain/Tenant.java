@@ -21,7 +21,7 @@ import java.util.UUID;
 @Builder
 @Table(
     indexes = {
-        @Index(name = "idx_tenant_owner_firebase_uid", columnList = "ownerFirebaseUid")
+        @Index(name = "idx_tenant_owner_user_id", columnList = "userId")
     }
 )
 public class Tenant {
@@ -36,7 +36,7 @@ public class Tenant {
     private TenantStatus status;
 
     @Column(nullable = false)
-    private String ownerFirebaseUid;
+    private String userId;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

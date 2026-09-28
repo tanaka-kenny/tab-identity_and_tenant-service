@@ -5,7 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import za.co.pacifish.identity_and_tenant_service.dto.FirebaseUserDetailsDto;
+import za.co.pacifish.identity_and_tenant_service.dto.AuthUserDetails;
 
 import java.util.Objects;
 
@@ -13,7 +13,7 @@ import java.util.Objects;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class AuthContextUtils {
 
-    public static FirebaseUserDetailsDto userDetails() {
+    public static AuthUserDetails userDetails() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (Objects.isNull(authentication)) {
             log.error("Authentication not found in SecurityContext");
@@ -21,11 +21,11 @@ public final class AuthContextUtils {
         }
 
         Object principal = authentication.getPrincipal();
-        if (!(principal instanceof FirebaseUserDetailsDto)) {
+        if (!(principal instanceof AuthUserDetails)) {
             log.error("User details not found in auth context: principal is not a FirebaseUserDetailsDto");
             throw new IllegalStateException("User details not found in auth context");
         }
 
-        return (FirebaseUserDetailsDto) principal;
+        return (AuthUserDetails) principal;
     }
 }

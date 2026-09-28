@@ -2,12 +2,12 @@ package za.co.pacifish.identity_and_tenant_service.dto;
 
 import za.co.pacifish.identity_and_tenant_service.enumeration.Role;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
-public record FirebaseUserDetailsDto(
+public record InvitationValidationResponse(
     String email,
-    String firebaseUid,
-    String tenantId,
-    List<Role> roles
+    Role role,
+    String tenantName,
+    LocalDateTime expiration
 ) {
 }
